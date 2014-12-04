@@ -1,5 +1,4 @@
-
-//#include "stdafx.h"
+//PAMELA PEIXINHO_ OPENCV FEATURES
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
@@ -291,9 +290,6 @@ void ContornoIplImage(){
 	cvShowImage("POLY APPROXIMATE", img5);
 
 }
-
-
-
 void CalcHistograma(){
 	Mat src,img;
 
@@ -706,7 +702,6 @@ void mask(){
 
 	image.copyTo(imagefinal, mask);
 
-
 	imshow("final", imagefinal);
 	imshow("imagem", image);
 	imshow("mask", mask);
@@ -716,7 +711,7 @@ void mask(){
 
 }
 
-void HistogramaMask(Mat image, int h, int s, int v){
+void HistogramaMask_(Mat image, int h, int s, int v){
 
 	FILE* arq = fopen("maskhistograma.txt", "w");
 
@@ -794,11 +789,26 @@ void HistogramaMask(Mat image, int h, int s, int v){
 	fclose(arq);
 }
 
-void HistogramaMask(Mat image, Mat mask, int h, int s, int v){
+vector<float> normalizavetor(vector<float>hist, int t, int size){
+	
+	t = (float)t;
+	int i = 0;
+	for (i = 0; i < size; i++){
+		//printf("antes: %f", hist[i]);
 
-	FILE* arq = fopen("maskhistograma.txt", "w");
+		hist[i] = hist[i]/t;
 
-	vector<int> hist;
+		//printf("depois: %f", hist[i]);
+	}
+
+	return hist;
+}
+
+void HistogramaMask(char *nomearquivo, Mat image, Mat mask, int h, int s, int v){
+
+	FILE* arq = fopen(nomearquivo, "w");
+
+	vector<float> hist;
 
 	Mat img_hsv, HSV;
 
@@ -816,32 +826,38 @@ void HistogramaMask(Mat image, Mat mask, int h, int s, int v){
 	cvtColor(image, img_hsv, CV_BGR2HSV_FULL);
 		//Convert RGB to HSV (FULL)->(0 - 360, 0-255, 0-255)
 
-	//namedWindow("original");
-	//namedWindow("hsv");
-
-	//imshow("original", image);
+	imshow("original", image);
 	imshow("hsv", img_hsv);
+	imshow("mask", mask);
 
 
-	int k = 0, t = 0, h1 = 0, s1 = 0, v1 = 0, teste = 0;
+	int k = 0, branco = 0, h1 = 0, s1 = 0, v1 = 0, r=0, g=0, b=0;
 
 	for (int x = 0; x < img_hsv.rows; x++){
 
 		for (int y = 0; y < img_hsv.cols; y++){
 		
-			uchar m = mask.at<uchar>(x, y);
-			fprintf(arq, "image mascara = %d\n",m);
+			/*uchar m = mask.at<uchar>(x, y);
+			fprintf(arq, "\n\nimage mascara = %d\n",m);*/
 
-			/*Vec3b p = img_hsv.at<Vec3b>(x, y);
+			Vec3b m = mask.at<Vec3b>(x, y);
+
+			r = m.val[0];
+			g = m.val[1];
+			b = m.val[2];
+
+			fprintf(arq, "\n\nimage mascara = %d %d %d\n", r,b,g);
+
+			Vec3b p = img_hsv.at<Vec3b>(x, y);
 
 			h1 = p.val[0];
 			s1 = p.val[1];
-			v1 = p.val[2];*/
+			v1 = p.val[2];
 
-			printf("H=%d, S=%d, V=%d\n", h1, s1, v1);
+			//printf("H=%d, S=%d, V=%d\n", h1, s1, v1);
 			fprintf(arq, "H=%d, S=%d, V=%d\n", h1, s1, v1);
 
-			if (m != 0){
+			if (r!=0 && g!=0 && b!=0){
 
 				//printf("H(entravetor)=%d, S(entravetor)=%d, V(entravetor)=%d\n", h1, s1, v1);
 				fprintf(arq, "H(entravetor)=%d, S(entravetor)=%d, V(entravetor)=%d\n", h1, s1, v1);
@@ -854,21 +870,30 @@ void HistogramaMask(Mat image, Mat mask, int h, int s, int v){
 				hist[k] += 1;
 
 				k = 0;
-				t++;
+				branco++;
 			}
 
 		}
 	}
 
-	printf("%d\n", t);
-	fprintf(arq, "quantidade pixel que entrou no vetor:%d\n", t);
+	//printf("%d\n", t);
+	fprintf(arq, "quantidade pixel que entrou no vetor:%d\n", branco);
+	fprintf(arq, "\nImage:quantidade pixel linhas:%d\ colunas:%d e total:%d\n", img_hsv.rows, img_hsv.cols, (img_hsv.rows*img_hsv.cols));
+	fprintf(arq, "\nMask:quantidade pixel linhas:%d\ colunas:%d e total:%d\n", mask.rows, mask.cols, (mask.rows*mask.cols));
 
-	printf("vetor:\n");
-	fprintf(arq, "Vetor: \n");
+	//printf("vetor:\n");
+	fprintf(arq, "\nVetor antes: \n");
 
 	for (int i = 0; i < (h*s*v); i++){
 		//	printf("%d ", hist[i]);
-		fprintf(arq, "%d ", hist[i]);
+		fprintf(arq, "%.1f ", hist[i]);
+	}
+	
+	hist = normalizavetor(hist, branco, (h*s*v));
+	fprintf(arq, "\n\nVetor depois: \n");
+	for (int i = 0; i < (h*s*v); i++){
+		//	printf("%d ", hist[i]);
+		fprintf(arq, "%.2f ", hist[i]);
 	}
 
 	fclose(arq);
@@ -889,19 +914,21 @@ Mat ApplymaskHist(Mat image, Mat mask){
 
 
 
-
 int main(int argc, char *argv[]){
 	
 	//ContornoHullMAT();
+	
+	char *nomeimage = argv[1], *nomemask = argv[2],*nomearquivo = argv[3];
+	int arg_h = atoi(argv[4]), arg_s = atoi(argv[5]), arg_v = atoi(argv[6]);
+	
 
-	int arg_h = atoi(argv[1]), arg_s = atoi(argv[2]), arg_v = atoi(argv[2]);
 	//printf("%d %d %d", arg_h, arg_s, arg_v);
 
-	Mat image = imread("mhorizonte.png"), mask = imread("mask.png"), final;
+	Mat image = imread(nomeimage), mask = imread(nomemask), final;
 
-	final = ApplymaskHist(image, mask);
+	//final = ApplymaskHist(image, mask);
 	
-	HistogramaMask(final, mask, arg_h, arg_s, arg_v);
+	HistogramaMask(nomearquivo, image, mask, arg_h, arg_s, arg_v);
 
 	//system("pause");
 	cvWaitKey(0);
